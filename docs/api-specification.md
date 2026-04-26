@@ -18,4 +18,4 @@
 
 ## 4. 카테고리 API
 - GET /api/v1/categories : 본인이 생성한 카테고리 목록 조회
-- POST /api/v1/categories : 커스텀 카테고리 추가ß
+- POST /api/v1/categories : 커스텀 카테고리 추가

@@ -1,0 +1,147 @@
+package com.smartschedule.smartschedule.domain.auth.service;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import com.smartschedule.smartschedule.domain.auth.client.KakaoOAuthClient;
+import com.smartschedule.smartschedule.domain.auth.dto.request.AuthRequestDTO;
+import com.smartschedule.smartschedule.domain.auth.dto.response.AuthResponseDTO;
+import com.smartschedule.smartschedule.domain.auth.dto.response.KakaoTokenResponseDTO;
+import com.smartschedule.smartschedule.domain.auth.dto.response.KakaoUserInfoDTO;
+import com.smartschedule.smartschedule.domain.auth.exception.AuthException;
+import com.smartschedule.smartschedule.domain.member.entity.Member;
+import com.smartschedule.smartschedule.domain.member.enums.Role;
+import com.smartschedule.smartschedule.domain.member.enums.SocialProvider;
+import com.smartschedule.smartschedule.domain.member.repository.MemberRepository;
+import com.smartschedule.smartschedule.domain.member.service.command.MemberCommandService;
+import com.smartschedule.smartschedule.domain.member.service.query.MemberQueryService;
+import com.smartschedule.smartschedule.global.util.JwtUtil;
+import com.smartschedule.smartschedule.global.util.RedisUtil;
+import io.jsonwebtoken.Claims;
+import java.util.Optional;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+@ExtendWith(MockitoExtension.class)
+class AuthServiceTest {
+
+    @Mock
+    private MemberQueryService memberQueryService;
+    @Mock
+    private MemberCommandService memberCommandService;
+    @Mock
+    private MemberRepository memberRepository;
+    @Mock
+    private JwtUtil jwtUtil;
+    @Mock
+    private RedisUtil redisUtil;
+    @Mock
+    private KakaoOAuthClient kakaoOAuthClient;
+
+    @InjectMocks
+    private AuthService authService;
+
+    @Test
+    @DisplayName("소셜 로그인 - 신규 가입 시나리오 성공 검증")
+    void socialLogin_NewMember_Success() {
+        // given
+        String provider = "kakao";
+        AuthRequestDTO.SocialLoginDTO request = AuthRequestDTO.SocialLoginDTO.builder()
+                .authorizationCode("valid_code")
+                .build();
+
+        KakaoTokenResponseDTO tokenResponse = KakaoTokenResponseDTO.builder()
+                .accessToken("k_access")
+                .refreshToken("k_refresh")
+                .expiresIn(3600)
+                .build();
+
+        KakaoUserInfoDTO userInfo = KakaoUserInfoDTO.builder()
+                .id(12345L)
+                .build();
+
+        Member newMember = Member.builder()
+                .nickname("NewUser")
+                .role(Role.ROLE_USER)
+                .build();
+
+        ReflectionTestUtils.setField(newMember, "id", 1L);
+
+        // when
+        when(kakaoOAuthClient.fetchKakaoAccessToken(anyString())).thenReturn(tokenResponse);
+        when(kakaoOAuthClient.fetchKakaoUserInfo(anyString())).thenReturn(userInfo);
+        when(memberQueryService.findBySocialIdAndProvider(anyString(), any())).thenReturn(Optional.empty());
+        when(memberCommandService.createSocialMember(any(), any(), anyString(), any())).thenReturn(newMember);
+        when(jwtUtil.createAccessToken(anyLong(), any())).thenReturn("app_access");
+        when(jwtUtil.createRefreshToken(anyLong())).thenReturn("app_refresh_token");
+        when(jwtUtil.getExpirationTime(anyString())).thenReturn(10000L);
+
+        AuthResponseDTO.TokenResultDTO result = authService.socialLogin(provider, request);
+
+        // then
+        assertNotNull(result);
+        assertEquals("app_access", result.getAccessToken());
+        verify(memberCommandService).createSocialMember(any(), any(), eq("12345"), eq(SocialProvider.KAKAO));
+        verify(redisUtil).set(eq("RT:1"), eq("app_refresh_token"), any());
+    }
+
+    @Test
+    @DisplayName("로그아웃 - 만료된 토큰 로그아웃 성공 검증")
+    void logout_ExpiredToken_Success() {
+        // given
+        String accessToken = "Bearer expired_token";
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn("1");
+
+        when(jwtUtil.getClaimsForLogout(anyString())).thenReturn(claims);
+        when(redisUtil.hasKey("RT:1")).thenReturn(true);
+        when(jwtUtil.getExpirationTime(anyString())).thenReturn(0L);
+
+        // when
+        authService.logout(accessToken);
+
+        // then
+        verify(redisUtil).delete("RT:1");
+        verify(redisUtil).setBlackList(anyString(), eq(0L));
+    }
+
+    @Test
+    @DisplayName("RTR 동시성 방어 - 동일 RT 재발급 2회 요청 시 실패 검증")
+    void reissueToken_Concurrency_Fail() {
+        // given
+        String refreshToken = "Bearer valid_refresh";
+        Claims claims = mock(Claims.class);
+
+        // when
+        when(claims.getSubject()).thenReturn("1");
+        when(claims.get("category", String.class)).thenReturn("refresh");
+
+        when(jwtUtil.validateToken(anyString())).thenReturn(true);
+        when(jwtUtil.getClaims(anyString())).thenReturn(claims);
+
+        when(redisUtil.getAndDelete("RT:1"))
+                .thenReturn("valid_refresh")
+                .thenReturn(null);
+
+        Member member = Member.builder()
+                .role(Role.ROLE_USER)
+                .build();
+
+        ReflectionTestUtils.setField(member, "id", 1L);
+
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(jwtUtil.createAccessToken(anyLong(), any())).thenReturn("new_access");
+        when(jwtUtil.createRefreshToken(anyLong())).thenReturn("new_refresh");
+        when(jwtUtil.getExpirationTime(anyString())).thenReturn(10000L);
+
+        // then
+        assertNotNull(authService.reissueToken(refreshToken));
+        assertThrows(AuthException.class, () -> authService.reissueToken(refreshToken));
+    }
+}

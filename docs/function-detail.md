@@ -1,7 +1,8 @@
 # 기능별 상세 구현 내역
 
 ## 1. 회원 및 인증 인가 체계
-- 비밀번호 암호화: Spring Security의 BCryptPasswordEncoder를 통한 단방향 해시 적용
+- 소셜 로그인: 메인 인증 수단이며, 우선 카카오 로그인만 구현함
+- 비밀번호 암호화(필수 아님): Spring Security의 BCryptPasswordEncoder를 통한 단방향 해시 적용
 - JWT 발급: 로그인 성공 시 Access Token 및 Refresh Token 페어 생성 및 반환
 - 무상태 인증: 세션을 사용하지 않고 JWT 기반의 커스텀 필터를 SecurityFilterChain에 등록하여 토큰 검증
 - 인가 처리: @AuthenticationPrincipal 어노테이션을 활용하여 컨트롤러 계층에서 현재 로그인한 사용자 식별

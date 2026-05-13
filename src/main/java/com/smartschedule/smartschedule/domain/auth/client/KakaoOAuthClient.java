@@ -26,6 +26,8 @@ public class KakaoOAuthClient {
 
     public KakaoTokenResponseDTO fetchKakaoAccessToken(String authorizationCode) {
         try {
+            log.info("카카오 토큰 요청 - redirect_uri: {}", kakaoProperties.getRedirectUri());
+
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
             body.add("grant_type", "authorization_code");
             body.add("client_id", kakaoProperties.getClientId());

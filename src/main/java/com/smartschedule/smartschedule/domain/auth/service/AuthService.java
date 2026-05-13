@@ -1,65 +1,121 @@
 package com.smartschedule.smartschedule.domain.auth.service;
 
 import com.smartschedule.smartschedule.domain.auth.client.KakaoOAuthClient;
-import com.smartschedule.smartschedule.domain.auth.dto.OAuth2UserInfo;
+import com.smartschedule.smartschedule.domain.auth.client.OAuth2UserInfo;
 import com.smartschedule.smartschedule.domain.auth.dto.request.AuthRequestDTO;
 import com.smartschedule.smartschedule.domain.auth.dto.response.AuthResponseDTO;
 import com.smartschedule.smartschedule.domain.auth.dto.response.KakaoTokenResponseDTO;
 import com.smartschedule.smartschedule.domain.auth.exception.AuthException;
 import com.smartschedule.smartschedule.domain.auth.exception.code.error.AuthErrorCode;
+import com.smartschedule.smartschedule.domain.member.dto.response.MemberResponseDTO;
 import com.smartschedule.smartschedule.domain.member.entity.Member;
+import com.smartschedule.smartschedule.domain.member.enums.Role;
 import com.smartschedule.smartschedule.domain.member.enums.SocialProvider;
-import com.smartschedule.smartschedule.domain.member.repository.MemberRepository;
+import com.smartschedule.smartschedule.domain.member.exception.MemberException;
+import com.smartschedule.smartschedule.domain.member.exception.code.error.MemberErrorCode;
 import com.smartschedule.smartschedule.domain.member.service.command.MemberCommandService;
 import com.smartschedule.smartschedule.domain.member.service.query.MemberQueryService;
 import com.smartschedule.smartschedule.global.util.JwtUtil;
+import com.smartschedule.smartschedule.global.util.MailService;
 import com.smartschedule.smartschedule.global.util.RedisUtil;
 import java.time.Duration;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    // RT: Refresh Token의 줄임말
     private static final String REDIS_RT_PREFIX = "RT:";
+    private static final String REDIS_PW_RESET_PREFIX = "PW_RESET:";
     private static final String BEARER_PREFIX_LOWER = "bearer ";
 
     private final MemberQueryService memberQueryService;
     private final MemberCommandService memberCommandService;
-    private final MemberRepository memberRepository;
     private final JwtUtil jwtUtil;
     private final RedisUtil redisUtil;
-
+    private final MailService mailService;
+    private final PasswordEncoder passwordEncoder;
     private final KakaoOAuthClient kakaoOAuthClient;
 
-    // 소셜 로그인
-    public AuthResponseDTO.TokenResultDTO socialLogin(
-            String provider,
-            AuthRequestDTO.SocialLoginDTO request
-    ) {
-        SocialProvider socialProvider = SocialProvider.fromString(provider);
+    // 비밀번호 재설정 요청
+    public void requestPasswordReset(AuthRequestDTO.PasswordResetRequestDTO request) {
+        Member member = memberQueryService.findByEmail(request.getEmail());
+        
+        // 소셜 로그인 사용자인지 확인
+        if (member.getSocialProvider() != null) {
+            throw new MemberException(MemberErrorCode.CANNOT_RESET_SOCIAL_PASSWORD);
+        }
+        
+        String resetToken = UUID.randomUUID().toString();
+        redisUtil.set(REDIS_PW_RESET_PREFIX + resetToken, member.getEmail(), Duration.ofMinutes(15));
+        
+        String resetLink = "http://localhost:5173/reset-password?token=" + resetToken;
+        mailService.sendPasswordResetMail(member.getEmail(), resetLink);
+        
+        log.info("비밀번호를 초기화하는 메일을 성공적으로 보냄: {}", member.getEmail());
+    }
 
-        // 제공자별 클라이언트를 통해 추상화된 유저 정보 얻기
+    // 비밀번호 재설정 실행
+    public void resetPassword(AuthRequestDTO.PasswordResetDTO request) {
+        String email = (String) redisUtil.getAndDelete(REDIS_PW_RESET_PREFIX + request.getToken());
+        
+        if (email == null) {
+            throw new AuthException(AuthErrorCode.RESET_TOKEN_INVALID);
+        }
+        
+        Member member = memberQueryService.findByEmail(email);
+        memberCommandService.updatePassword(member, passwordEncoder.encode(request.getNewPassword()));
+        
+        log.info("패스워드가 성공적으로 초기화됨: {}", email);
+    }
+
+    // 일반 회원가입
+    public AuthResponseDTO.TokenResultDTO signup(AuthRequestDTO.SignupDTO request) {
+        log.info("일반 회원가입을 시도합니다: email={}", request.getEmail());
+        MemberResponseDTO.MemberResultDTO memberDTO = memberCommandService.createMember(request);
+        log.info("일반 회원가입이 완료되었습니다: memberId={}", memberDTO.id());
+        return generateAndSaveTokens(memberDTO.id(), memberDTO.role());
+    }
+
+    // 일반 로그인
+    public AuthResponseDTO.TokenResultDTO login(AuthRequestDTO.LoginDTO request) {
+        log.info("일반 로그인을 시도합니다: email={}", request.getEmail());
+        Member member = memberQueryService.findByEmail(request.getEmail());
+
+        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+            log.warn("로그인 실패: 비밀번호 불일치 - email={}", request.getEmail());
+            throw new AuthException(AuthErrorCode.TOKEN_INVALID);
+        }
+
+        log.info("일반 로그인이 완료되었습니다: memberId={}", member.getId());
+        return generateAndSaveTokens(member.getId(), member.getRole());
+    }
+
+    // 소셜 로그인
+    public AuthResponseDTO.TokenResultDTO socialLogin(String provider, AuthRequestDTO.SocialLoginDTO request) {
+        log.info("소셜 로그인을 시도합니다: provider={}", provider);
+        SocialProvider socialProvider = SocialProvider.fromString(provider);
         OAuth2UserInfo userInfo = fetchUserInfo(socialProvider, request.getAuthorizationCode());
 
         String socialId = userInfo.getSocialId();
         String email = userInfo.getEmail();
         String nickname = userInfo.getNickname();
 
-        // 회원 조회 및 가입 처리
-        Member member = memberQueryService.findBySocialIdAndProvider(socialId, socialProvider)
+        // Query와 Command 모두 MemberResultDTO를 반환하므로 타입이 일치함
+        MemberResponseDTO.MemberResultDTO memberDTO = memberQueryService.findBySocialIdAndProvider(socialId, socialProvider)
                 .orElseGet(() -> memberCommandService.createSocialMember(email, nickname, socialId, socialProvider));
 
-        return generateAndSaveTokens(member);
+        log.info("소셜 로그인이 완료되었습니다: provider={}, memberId={}", provider, memberDTO.id());
+        return generateAndSaveTokens(memberDTO.id(), memberDTO.role());
     }
 
     // 로그아웃
     public void logout(String accessToken) {
         String resolvedToken = resolveToken(accessToken);
-
         Long memberId;
 
         try {
@@ -106,30 +162,27 @@ public class AuthService {
             throw new AuthException(AuthErrorCode.TOKEN_INVALID);
         }
 
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.TOKEN_INVALID));
+        Member member = memberQueryService.findById(memberId);
 
-        return generateAndSaveTokens(member);
+        return generateAndSaveTokens(member.getId(), member.getRole());
     }
 
-    // 소셜 제공자별로 유저 정보를 가져오는 로직을 분리하여 확장성을 확보합니다.
     private OAuth2UserInfo fetchUserInfo(SocialProvider provider, String code) {
         return switch (provider) {
             case KAKAO -> {
                 KakaoTokenResponseDTO tokenResponse = kakaoOAuthClient.fetchKakaoAccessToken(code);
                 yield kakaoOAuthClient.fetchKakaoUserInfo(tokenResponse.accessToken());
             }
-            // 추후에 네이버, 구글 등 추가(시간 되면..?)
             default -> throw new AuthException(AuthErrorCode.UNSUPPORTED_PROVIDER);
         };
     }
 
-    private AuthResponseDTO.TokenResultDTO generateAndSaveTokens(Member member) {
-        String accessToken = jwtUtil.createAccessToken(member.getId(), member.getRole());
-        String refreshToken = jwtUtil.createRefreshToken(member.getId());
+    private AuthResponseDTO.TokenResultDTO generateAndSaveTokens(Long memberId, Role role) {
+        String accessToken = jwtUtil.createAccessToken(memberId, role);
+        String refreshToken = jwtUtil.createRefreshToken(memberId);
 
         Long expirationMillis = jwtUtil.getExpirationTime(refreshToken);
-        redisUtil.set(REDIS_RT_PREFIX + member.getId(), refreshToken, Duration.ofMillis(expirationMillis));
+        redisUtil.set(REDIS_RT_PREFIX + memberId, refreshToken, Duration.ofMillis(expirationMillis));
 
         return new AuthResponseDTO.TokenResultDTO(accessToken, refreshToken);
     }
@@ -141,7 +194,6 @@ public class AuthService {
                 return trimmedToken.substring(7).trim();
             }
         }
-
         return token;
     }
 

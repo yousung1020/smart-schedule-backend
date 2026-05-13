@@ -10,6 +10,7 @@ import com.smartschedule.smartschedule.domain.auth.dto.response.AuthResponseDTO;
 import com.smartschedule.smartschedule.domain.auth.dto.response.KakaoTokenResponseDTO;
 import com.smartschedule.smartschedule.domain.auth.dto.response.KakaoUserInfoDTO;
 import com.smartschedule.smartschedule.domain.auth.exception.AuthException;
+import com.smartschedule.smartschedule.domain.member.dto.response.MemberResponseDTO;
 import com.smartschedule.smartschedule.domain.member.entity.Member;
 import com.smartschedule.smartschedule.domain.member.enums.Role;
 import com.smartschedule.smartschedule.domain.member.enums.SocialProvider;
@@ -26,11 +27,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
-
     @Mock
     private MemberQueryService memberQueryService;
     @Mock
@@ -43,9 +44,58 @@ class AuthServiceTest {
     private RedisUtil redisUtil;
     @Mock
     private KakaoOAuthClient kakaoOAuthClient;
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private AuthService authService;
+
+    @Test
+    @DisplayName("일반 회원가입 - 성공 시 토큰 반환 검증")
+    void signup_Success() {
+        // given
+        AuthRequestDTO.SignupDTO request = AuthRequestDTO.SignupDTO.builder()
+                .email("test@test.com").password("password").nickname("Tester").build();
+        MemberResponseDTO.MemberResultDTO memberDTO = MemberResponseDTO.MemberResultDTO.builder()
+                .id(1L).email("test@test.com").role(Role.ROLE_USER).build();
+
+        when(memberCommandService.createMember(any())).thenReturn(memberDTO);
+        when(jwtUtil.createAccessToken(anyLong(), any())).thenReturn("access_token");
+        when(jwtUtil.createRefreshToken(anyLong())).thenReturn("refresh_token");
+        when(jwtUtil.getExpirationTime(anyString())).thenReturn(1000L);
+
+        // when
+        AuthResponseDTO.TokenResultDTO result = authService.signup(request);
+
+        // then
+        assertNotNull(result);
+        assertEquals("access_token", result.getAccessToken());
+        verify(redisUtil).set(eq("RT:1"), eq("refresh_token"), any());
+    }
+
+    @Test
+    @DisplayName("일반 로그인 - 성공 시 토큰 반환 검증")
+    void login_Success() {
+        // given
+        AuthRequestDTO.LoginDTO request = AuthRequestDTO.LoginDTO.builder()
+                .email("test@test.com").password("password").build();
+        Member member = Member.builder()
+                .email("test@test.com").password("encoded_pw").role(Role.ROLE_USER).build();
+        ReflectionTestUtils.setField(member, "id", 1L);
+
+        when(memberRepository.findByEmail(anyString())).thenReturn(Optional.of(member));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
+        when(jwtUtil.createAccessToken(anyLong(), any())).thenReturn("access_token");
+        when(jwtUtil.createRefreshToken(anyLong())).thenReturn("refresh_token");
+        when(jwtUtil.getExpirationTime(anyString())).thenReturn(1000L);
+
+        // when
+        AuthResponseDTO.TokenResultDTO result = authService.login(request);
+
+        // then
+        assertNotNull(result);
+        assertEquals("access_token", result.getAccessToken());
+    }
 
     @Test
     @DisplayName("소셜 로그인 - 신규 가입 시나리오 성공 검증")
@@ -53,31 +103,18 @@ class AuthServiceTest {
         // given
         String provider = "kakao";
         AuthRequestDTO.SocialLoginDTO request = AuthRequestDTO.SocialLoginDTO.builder()
-                .authorizationCode("valid_code")
-                .build();
-
+                .authorizationCode("valid_code").build();
         KakaoTokenResponseDTO tokenResponse = KakaoTokenResponseDTO.builder()
-                .accessToken("k_access")
-                .refreshToken("k_refresh")
-                .expiresIn(3600)
-                .build();
-
-        KakaoUserInfoDTO userInfo = KakaoUserInfoDTO.builder()
-                .id(12345L)
-                .build();
-
-        Member newMember = Member.builder()
-                .nickname("NewUser")
-                .role(Role.ROLE_USER)
-                .build();
-
-        ReflectionTestUtils.setField(newMember, "id", 1L);
+                .accessToken("k_access").build();
+        KakaoUserInfoDTO userInfo = KakaoUserInfoDTO.builder().id(12345L).build();
+        MemberResponseDTO.MemberResultDTO memberDTO = MemberResponseDTO.MemberResultDTO.builder()
+                .id(1L).email("kakao@test.com").role(Role.ROLE_USER).build();
 
         // when
         when(kakaoOAuthClient.fetchKakaoAccessToken(anyString())).thenReturn(tokenResponse);
         when(kakaoOAuthClient.fetchKakaoUserInfo(anyString())).thenReturn(userInfo);
         when(memberQueryService.findBySocialIdAndProvider(anyString(), any())).thenReturn(Optional.empty());
-        when(memberCommandService.createSocialMember(any(), any(), anyString(), any())).thenReturn(newMember);
+        when(memberCommandService.createSocialMember(any(), any(), anyString(), any())).thenReturn(memberDTO);
         when(jwtUtil.createAccessToken(anyLong(), any())).thenReturn("app_access");
         when(jwtUtil.createRefreshToken(anyLong())).thenReturn("app_refresh_token");
         when(jwtUtil.getExpirationTime(anyString())).thenReturn(10000L);
@@ -129,10 +166,7 @@ class AuthServiceTest {
                 .thenReturn("valid_refresh")
                 .thenReturn(null);
 
-        Member member = Member.builder()
-                .role(Role.ROLE_USER)
-                .build();
-
+        Member member = Member.builder().role(Role.ROLE_USER).build();
         ReflectionTestUtils.setField(member, "id", 1L);
 
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));

@@ -2,7 +2,7 @@ package com.smartschedule.smartschedule.domain.auth.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.smartschedule.smartschedule.domain.auth.dto.OAuth2UserInfo;
+import com.smartschedule.smartschedule.domain.auth.client.OAuth2UserInfo;
 import lombok.Builder;
 
 @Builder
@@ -22,6 +22,7 @@ public record KakaoUserInfoDTO(
         return (kakaoAccount != null) ? kakaoAccount.email() : null;
     }
 
+    // 회원의 id 반환
     @Override
     public String getNickname() {
         if (kakaoAccount != null && kakaoAccount.profile() != null) {
@@ -30,6 +31,7 @@ public record KakaoUserInfoDTO(
         return "User_" + id;
     }
 
+    // 카카오 extra 정보
     @Builder
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record KakaoAccount(

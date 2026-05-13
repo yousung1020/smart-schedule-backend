@@ -9,7 +9,6 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class ApiResponse<T> {
-    @JsonProperty("is_success")
     private final Boolean isSuccess;
     private final String code;
     private final String message;

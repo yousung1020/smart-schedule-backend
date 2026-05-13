@@ -38,6 +38,11 @@ public enum AuthErrorCode implements BaseErrorCode {
             "소셜 서버와의 통신에 실패했습니다.",
             "AUTH500_1"
     ),
+    RESET_TOKEN_INVALID(
+            HttpStatus.BAD_REQUEST,
+            "유효하지 않거나 만료된 비밀번호 재설정 토큰입니다.",
+            "AUTH400_2"
+    ),
     ;
 
     private final HttpStatus httpStatus;

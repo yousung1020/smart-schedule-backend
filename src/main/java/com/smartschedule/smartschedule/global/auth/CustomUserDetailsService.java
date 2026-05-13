@@ -1,5 +1,6 @@
 package com.smartschedule.smartschedule.global.auth;
 
+import com.smartschedule.smartschedule.domain.member.converter.MemberConverter;
 import com.smartschedule.smartschedule.domain.member.exception.MemberException;
 import com.smartschedule.smartschedule.domain.member.exception.code.error.MemberErrorCode;
 import com.smartschedule.smartschedule.domain.member.repository.MemberRepository;
@@ -19,7 +20,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(@NonNull String username) throws UsernameNotFoundException {
         return memberRepository.findById(Long.parseLong(username))
-                .map(CustomUserDetails::new)
+                .map(member -> new CustomUserDetails(MemberConverter.toResultDTO(member)))
                 .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
     }
 }

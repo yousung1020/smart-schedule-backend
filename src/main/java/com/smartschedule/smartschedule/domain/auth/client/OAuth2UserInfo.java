@@ -1,4 +1,4 @@
-package com.smartschedule.smartschedule.domain.auth.dto;
+package com.smartschedule.smartschedule.domain.auth.client;
 
 public interface OAuth2UserInfo {
     String getSocialId();

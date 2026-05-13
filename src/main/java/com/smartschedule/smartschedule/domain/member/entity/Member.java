@@ -8,10 +8,14 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@SQLDelete(sql = "UPDATE member SET is_active = false WHERE id = ?")
+@SQLRestriction("is_active = true")
 @Table(
     name = "member",
     uniqueConstraints = {
@@ -66,5 +70,9 @@ public class Member extends BaseEntity {
         this.isActive = isActive;
         this.socialProvider = socialProvider;
         this.socialId = socialId;
+    }
+
+    public void updatePassword(String password) {
+        this.password = password;
     }
 }

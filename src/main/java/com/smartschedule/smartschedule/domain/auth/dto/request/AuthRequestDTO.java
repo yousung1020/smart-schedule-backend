@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 public class AuthRequestDTO {
-
     @Getter
     @Builder
     @AllArgsConstructor
@@ -42,5 +41,27 @@ public class AuthRequestDTO {
     public static class SocialLoginDTO {
         @NotBlank(message = "인가 코드는 필수 입력값입니다.")
         private String authorizationCode;
+    }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor(access = AccessLevel.PROTECTED)
+    public static class PasswordResetRequestDTO {
+        @NotBlank(message = "이메일은 필수 입력값입니다.")
+        @Email(message = "이메일 형식이 올바르지 않습니다.")
+        private String email;
+    }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor(access = AccessLevel.PROTECTED)
+    public static class PasswordResetDTO {
+        @NotBlank(message = "토큰은 필수 입력값입니다.")
+        private String token;
+
+        @NotBlank(message = "새 비밀번호는 필수 입력값입니다.")
+        private String newPassword;
     }
 }

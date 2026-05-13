@@ -8,8 +8,10 @@ import java.util.Optional;
 
 public interface MemberRepository extends JpaRepository<@NonNull Member,@NonNull Long> {
     Optional<Member> findByEmail(String email);
+
+    // 이메일 중복 체크
+    boolean existsByEmail(String email);
     
     // 소셜 로그인 고유 식별자로 회원 조회
     Optional<Member> findBySocialIdAndSocialProvider(String socialId, SocialProvider socialProvider);
 }
-

@@ -10,7 +10,6 @@ import java.time.Duration;
 
 @Configuration
 public class RestClientConfig {
-
     @Bean
     public RestClient restClient() {
         // connect timeout 설정

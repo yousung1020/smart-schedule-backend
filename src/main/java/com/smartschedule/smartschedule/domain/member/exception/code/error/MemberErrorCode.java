@@ -23,6 +23,11 @@ public enum MemberErrorCode implements BaseErrorCode {
             "해당 이메일은 다른 소셜 로그인으로 가입되어 있습니다.",
             "MEMBER400_1"
     ),
+    CANNOT_RESET_SOCIAL_PASSWORD(
+            HttpStatus.BAD_REQUEST,
+            "소셜 로그인 사용자는 비밀번호 재설정이 불가능합니다. 해당 소셜 플랫폼에서 변경해주세요.",
+            "MEMBER400_2"
+    ),
     ;
 
     private final HttpStatus httpStatus;

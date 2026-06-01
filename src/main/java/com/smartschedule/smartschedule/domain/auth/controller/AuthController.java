@@ -7,6 +7,7 @@ import com.smartschedule.smartschedule.domain.auth.exception.code.error.AuthErro
 import com.smartschedule.smartschedule.domain.auth.exception.code.success.AuthSuccessCode;
 import com.smartschedule.smartschedule.domain.auth.service.AuthService;
 import com.smartschedule.smartschedule.global.apiPayload.ApiResponse;
+import com.smartschedule.smartschedule.global.apiPayload.code.BaseSuccessCode;
 import com.smartschedule.smartschedule.global.config.JwtProperties;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -26,9 +27,12 @@ public class AuthController {
     // 일반 회원가입
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<AuthResponseDTO.AccessTokenResultDTO> signup(@RequestBody @Valid AuthRequestDTO.SignupDTO request, HttpServletResponse response) {
-        AuthResponseDTO.TokenResultDTO tokens = authService.signup(request);
-        return handleTokenResponse(tokens, response, AuthSuccessCode.SIGNUP_SUCCESS);
+    public ApiResponse<String> signup(@RequestBody @Valid AuthRequestDTO.SignupDTO request, HttpServletResponse response) {
+        authService.signup(request);
+        return ApiResponse.onSuccess(
+            AuthSuccessCode.SIGNUP_SUCCESS,
+            "회원가입에 성공하였습니다."
+        );
     }
 
     // 일반 로그인

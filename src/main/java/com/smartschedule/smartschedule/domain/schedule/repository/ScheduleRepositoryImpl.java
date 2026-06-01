@@ -30,27 +30,24 @@ public class ScheduleRepositoryImpl implements ScheduleRepositoryCustom {
 
     @Override
     public List<Schedule> findCalendarSchedules(
-        Long memberId,
-        ScheduleRequestDTO.CalendarSearch condition
-    ) {
+            Long memberId,
+            ScheduleRequestDTO.CalendarSearch condition) {
         return queryFactory
                 .selectFrom(schedule)
                 .leftJoin(schedule.category, category).fetchJoin()
                 .where(
                         memberIdEq(memberId),
                         dateBetween(condition.startDate(), condition.endDate()),
-                        categoryIdEq(condition.categoryId())
-                )
+                        categoryIdEq(condition.categoryId()))
                 .orderBy(schedule.startTime.asc())
                 .fetch();
     }
 
     @Override
     public Page<Schedule> searchSchedules(
-        Long memberId,
-        ScheduleRequestDTO.ListSearch condition,
-        Pageable pageable
-    ) {
+            Long memberId,
+            ScheduleRequestDTO.ListSearch condition,
+            Pageable pageable) {
         OrderSpecifier<?>[] orderSpecifiers = getOrderSpecifiers(pageable);
 
         List<Schedule> content = queryFactory
@@ -61,8 +58,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepositoryCustom {
                         keywordContains(condition.keyword()),
                         priorityEq(condition.priority()),
                         isCompletedEq(condition.isCompleted()),
-                        categoryIdEq(condition.categoryId())
-                )
+                        categoryIdEq(condition.categoryId()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .orderBy(orderSpecifiers)
@@ -76,8 +72,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepositoryCustom {
                         keywordContains(condition.keyword()),
                         priorityEq(condition.priority()),
                         isCompletedEq(condition.isCompleted()),
-                        categoryIdEq(condition.categoryId())
-                )
+                        categoryIdEq(condition.categoryId()))
                 .fetchOne();
 
         long total = (totalCount != null) ? totalCount : 0L;
@@ -87,10 +82,9 @@ public class ScheduleRepositoryImpl implements ScheduleRepositoryCustom {
 
     @Override
     public StatisticsResponseDTO.CompletionRateResultDTO getCompletionRate(
-        Long memberId,
-        LocalDateTime startDate,
-        LocalDateTime endDate
-    ) {
+            Long memberId,
+            LocalDateTime startDate,
+            LocalDateTime endDate) {
         Long totalCount = queryFactory
                 .select(schedule.count())
                 .from(schedule)
@@ -104,7 +98,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepositoryCustom {
                 .from(schedule)
                 .where(
                         memberIdEq(memberId),
-                        schedule.createdAt.between(startDate, endDate),
+                        schedule.startTime.between(startDate, endDate),
                         schedule.isCompleted.isTrue())
                 .fetchOne();
 
@@ -121,36 +115,34 @@ public class ScheduleRepositoryImpl implements ScheduleRepositoryCustom {
 
     @Override
     public List<StatisticsResponseDTO.CategoryDistributionResultDTO> getCategoryDistribution(
-        Long memberId,
-        LocalDateTime startDate,
-        LocalDateTime endDate
-    ) {
+            Long memberId,
+            LocalDateTime startDate,
+            LocalDateTime endDate) {
         return queryFactory
                 .select(
-                    Projections.constructor(
-                        StatisticsResponseDTO.CategoryDistributionResultDTO.class,
-                        schedule.category.id,
-                        schedule.category.name,
-                        schedule.count(),
-                        Expressions.constant(0.0)
-                    )
-                )
-                .from(schedule)
-                .leftJoin(schedule.category, category)
+                        Projections.constructor(
+                                StatisticsResponseDTO.CategoryDistributionResultDTO.class,
+                                category.id,
+                                category.name,
+                                schedule.count(),
+                                Expressions.constant(0.0)))
+                .from(category)
+                .leftJoin(schedule).on(
+                        schedule.category.id.eq(category.id),
+                        schedule.startTime.between(startDate, endDate),
+                        schedule.isCompleted.isTrue())
                 .where(
-                        memberIdEq(memberId),
-                        schedule.startTime.between(startDate, endDate))
-                .groupBy(schedule.category.id, schedule.category.name)
+                        category.member.id.eq(memberId))
+                .groupBy(category.id, category.name)
                 .fetch();
     }
 
     @Override
     public List<StatisticsResponseDTO.WeeklyActivityResultDTO> getWeeklyActivity(
-        Long memberId,
-        LocalDateTime startDate,
-        LocalDateTime endDate
-    ) {
-        StringExpression yearWeek = Expressions.stringTemplate("CONCAT(YEAR({0}), '-', WEEK({0}))", schedule.createdAt);
+            Long memberId,
+            LocalDateTime startDate,
+            LocalDateTime endDate) {
+        StringExpression yearWeek = Expressions.stringTemplate("CONCAT(YEAR({0}), '-', WEEK({0}))", schedule.startTime);
 
         return queryFactory
                 .select(Projections.constructor(StatisticsResponseDTO.WeeklyActivityResultDTO.class,
@@ -159,9 +151,32 @@ public class ScheduleRepositoryImpl implements ScheduleRepositoryCustom {
                 .from(schedule)
                 .where(
                         memberIdEq(memberId),
-                        schedule.createdAt.between(startDate, endDate))
+                        schedule.startTime.between(startDate, endDate),
+                        schedule.isCompleted.isTrue())
                 .groupBy(yearWeek)
                 .orderBy(yearWeek.asc())
+                .fetch();
+    }
+
+    @Override
+    public List<StatisticsResponseDTO.MonthlyActivityResultDTO> getMonthlyActivity(
+            Long memberId,
+            LocalDateTime startDate,
+            LocalDateTime endDate) {
+        StringExpression yearMonth = Expressions.stringTemplate("CONCAT(YEAR({0}), '-', MONTH({0}))",
+                schedule.startTime);
+
+        return queryFactory
+                .select(Projections.constructor(StatisticsResponseDTO.MonthlyActivityResultDTO.class,
+                        yearMonth,
+                        schedule.count()))
+                .from(schedule)
+                .where(
+                        memberIdEq(memberId),
+                        schedule.startTime.between(startDate, endDate),
+                        schedule.isCompleted.isTrue())
+                .groupBy(yearMonth)
+                .orderBy(yearMonth.asc())
                 .fetch();
     }
 
@@ -175,7 +190,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepositoryCustom {
                     Order direction = order.isAscending() ? Order.ASC : Order.DESC;
                     String property = order.getProperty();
                     PathBuilder<Schedule> pathBuilder = new PathBuilder<>(Schedule.class, "schedule");
-                    return new OrderSpecifier(direction, pathBuilder.get(property));
+                    return new OrderSpecifier<>(direction, pathBuilder.getComparable(property, Comparable.class));
                 })
                 .toArray(OrderSpecifier[]::new);
     }

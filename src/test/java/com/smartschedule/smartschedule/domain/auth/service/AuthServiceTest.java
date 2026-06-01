@@ -51,29 +51,6 @@ class AuthServiceTest {
     private AuthService authService;
 
     @Test
-    @DisplayName("일반 회원가입 - 성공 시 토큰 반환 검증")
-    void signup_Success() {
-        // given
-        AuthRequestDTO.SignupDTO request = AuthRequestDTO.SignupDTO.builder()
-                .email("test@test.com").password("password").nickname("Tester").build();
-        MemberResponseDTO.MemberResultDTO memberDTO = MemberResponseDTO.MemberResultDTO.builder()
-                .id(1L).email("test@test.com").role(Role.ROLE_USER).build();
-
-        when(memberCommandService.createMember(any())).thenReturn(memberDTO);
-        when(jwtUtil.createAccessToken(anyLong(), any())).thenReturn("access_token");
-        when(jwtUtil.createRefreshToken(anyLong())).thenReturn("refresh_token");
-        when(jwtUtil.getExpirationTime(anyString())).thenReturn(1000L);
-
-        // when
-        AuthResponseDTO.TokenResultDTO result = authService.signup(request);
-
-        // then
-        assertNotNull(result);
-        assertEquals("access_token", result.getAccessToken());
-        verify(redisUtil).set(eq("RT:1"), eq("refresh_token"), any());
-    }
-
-    @Test
     @DisplayName("일반 로그인 - 성공 시 토큰 반환 검증")
     void login_Success() {
         // given
@@ -83,7 +60,7 @@ class AuthServiceTest {
                 .email("test@test.com").password("encoded_pw").role(Role.ROLE_USER).build();
         ReflectionTestUtils.setField(member, "id", 1L);
 
-        when(memberRepository.findByEmail(anyString())).thenReturn(Optional.of(member));
+        when(memberQueryService.findByEmail(anyString())).thenReturn(member);
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
         when(jwtUtil.createAccessToken(anyLong(), any())).thenReturn("access_token");
         when(jwtUtil.createRefreshToken(anyLong())).thenReturn("refresh_token");
@@ -169,7 +146,7 @@ class AuthServiceTest {
         Member member = Member.builder().role(Role.ROLE_USER).build();
         ReflectionTestUtils.setField(member, "id", 1L);
 
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberQueryService.findById(1L)).thenReturn(member);
         when(jwtUtil.createAccessToken(anyLong(), any())).thenReturn("new_access");
         when(jwtUtil.createRefreshToken(anyLong())).thenReturn("new_refresh");
         when(jwtUtil.getExpirationTime(anyString())).thenReturn(10000L);

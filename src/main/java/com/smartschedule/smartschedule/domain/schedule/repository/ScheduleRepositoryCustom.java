@@ -25,4 +25,7 @@ public interface ScheduleRepositoryCustom {
 
     // 주간 활동 추이 조회 (특정 기간 내 주차별 생성된 일정 수 집계)
     List<StatisticsResponseDTO.WeeklyActivityResultDTO> getWeeklyActivity(Long memberId, LocalDateTime startDate, LocalDateTime endDate);
+
+    // 월간 활동 추이 조회 (특정 기간 내 월별 생성/완료된 일정 수 집계)
+    List<StatisticsResponseDTO.MonthlyActivityResultDTO> getMonthlyActivity(Long memberId, LocalDateTime startDate, LocalDateTime endDate);
 }

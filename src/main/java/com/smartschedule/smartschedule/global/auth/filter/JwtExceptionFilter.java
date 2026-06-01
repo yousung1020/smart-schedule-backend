@@ -1,6 +1,6 @@
 package com.smartschedule.smartschedule.global.auth.filter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.smartschedule.smartschedule.domain.auth.exception.AuthException;
 import com.smartschedule.smartschedule.domain.auth.exception.code.error.AuthErrorCode;
 import com.smartschedule.smartschedule.global.apiPayload.ApiResponse;

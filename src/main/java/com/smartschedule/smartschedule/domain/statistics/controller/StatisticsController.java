@@ -51,4 +51,14 @@ public class StatisticsController {
         var result = statisticsQueryService.getWeeklyActivity(userDetails.getMemberId(), startDate, endDate);
         return ApiResponse.onSuccess(StatisticsSuccessCode.WEEKLY_ACTIVITY_FETCH_SUCCESS, result);
     }
+
+    // 최근 월별 활동량 통계 조회 (기간 검색)
+    @GetMapping("/monthly-activity")
+    public ApiResponse<List<StatisticsResponseDTO.MonthlyActivityResultDTO>> getMonthlyActivity(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+        var result = statisticsQueryService.getMonthlyActivity(userDetails.getMemberId(), startDate, endDate);
+        return ApiResponse.onSuccess(StatisticsSuccessCode.WEEKLY_ACTIVITY_FETCH_SUCCESS, result);
+    }
 }

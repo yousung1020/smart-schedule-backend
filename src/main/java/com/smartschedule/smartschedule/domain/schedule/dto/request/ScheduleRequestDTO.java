@@ -35,7 +35,10 @@ public class ScheduleRequestDTO {
             @NotNull(message = "일정 구분(시작/마감)은 필수입니다.")
             ScheduleType scheduleType,
 
-            List<Integer> notifyBeforeMinutes
+            List<Integer> notifyBeforeMinutes,
+
+            @Size(max = 20, message = "색상 코드는 20자 이내여야 합니다.")
+            String color
     ) {}
 
     @Builder
@@ -60,7 +63,10 @@ public class ScheduleRequestDTO {
             @NotNull(message = "일정 구분(시작/마감)은 필수입니다.")
             ScheduleType scheduleType,
 
-            List<Integer> notifyBeforeMinutes
+            List<Integer> notifyBeforeMinutes,
+
+            @Size(max = 20, message = "색상 코드는 20자 이내여야 합니다.")
+            String color
     ) {}
 
     // 캘린더 뷰 조회를 위한 조건 (GET 파라미터 매핑을 위한 날짜 포맷 지정)

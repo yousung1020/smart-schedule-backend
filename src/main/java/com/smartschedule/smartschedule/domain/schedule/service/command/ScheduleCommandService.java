@@ -82,7 +82,8 @@ public class ScheduleCommandService {
                 request.endTime(),
                 request.priority(),
                 request.scheduleType(),
-                category
+                category,
+                request.color()
         );
 
         // 기존 알림 전체 삭제 후, 사용자가 요청한 옵션으로 새롭게 생성

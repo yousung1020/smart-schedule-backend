@@ -24,4 +24,10 @@ public class StatisticsResponseDTO {
             String weekLabel,
             Long count
     ) {}
+
+    @Builder
+    public record MonthlyActivityResultDTO(
+            String monthLabel,
+            Long count
+    ) {}
 }

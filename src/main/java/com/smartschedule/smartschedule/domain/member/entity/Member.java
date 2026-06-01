@@ -8,6 +8,9 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.UUID;
+
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
@@ -74,5 +77,19 @@ public class Member extends BaseEntity {
 
     public void updatePassword(String password) {
         this.password = password;
+    }
+
+    public void withdraw() {
+        this.isActive = false;
+        this.maskingEmailAndProviderId();
+    }
+
+    private void maskingEmailAndProviderId() {
+        String suffix = "_deleted_" + UUID.randomUUID().toString().substring(0, 8);
+        this.email = this.email + suffix;
+        
+        if (this.socialId != null) {
+            this.socialId = this.socialId + suffix;
+        }
     }
 }

@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class StatisticsCacheListener {
-
     private final CacheVersionService cacheVersionService;
 
     // 일정이 변경되면 해당 사용자의 통계 캐시 버전을 갱신

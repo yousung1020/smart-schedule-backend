@@ -4,7 +4,6 @@ import com.smartschedule.smartschedule.domain.schedule.repository.ScheduleReposi
 import com.smartschedule.smartschedule.domain.statistics.dto.response.StatisticsResponseDTO;
 import com.smartschedule.smartschedule.domain.statistics.exception.StatisticsException;
 import com.smartschedule.smartschedule.domain.statistics.exception.code.error.StatisticsErrorCode;
-import com.smartschedule.smartschedule.global.cache.CacheVersionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -13,16 +12,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.WeekFields;
 import java.util.List;
+import java.util.stream.Collectors;
+
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class StatisticsQueryService {
-
     private final ScheduleRepository scheduleRepository;
-    private final CacheVersionService cacheVersionService;
 
     // 일정 완료율 통계 조회
     @Cacheable(
@@ -75,7 +75,7 @@ public class StatisticsQueryService {
                             .share(calculatedShare)
                             .build();
                 })
-                .toList();
+                .collect(Collectors.toList()); // toList는 불변 리스트를 반환하므로, 가변 리스트를 반환
     }
 
     // 주간 활동 추이 통계 조회
@@ -91,7 +91,89 @@ public class StatisticsQueryService {
         log.info("주간 활동 추이 통계를 조회합니다: memberId={}, range={} ~ {}", memberId, startDate, endDate);
         validatePeriod(startDate, endDate);
         
-        return scheduleRepository.getWeeklyActivity(memberId, startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX));
+        List<StatisticsResponseDTO.WeeklyActivityResultDTO> rawList =
+                scheduleRepository.getWeeklyActivity(memberId, startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX));
+
+        return rawList.stream()
+                .map(item -> StatisticsResponseDTO.WeeklyActivityResultDTO.builder()
+                        .weekLabel(formatWeekLabel(item.weekLabel()))
+                        .count(item.count())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    // 월간 활동 추이 통계 조회
+    @Cacheable(
+            value = "monthlyActivity",
+            key = "#memberId + '_' + @cacheVersionService.getVersion('stats', #memberId) + '_' + #startDate + '_' + #endDate"
+    )
+    public List<StatisticsResponseDTO.MonthlyActivityResultDTO> getMonthlyActivity(
+            Long memberId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        log.info("월간 활동 추이 통계를 조회합니다: memberId={}, range={} ~ {}", memberId, startDate, endDate);
+        validatePeriod(startDate, endDate);
+        
+        List<StatisticsResponseDTO.MonthlyActivityResultDTO> rawList =
+                scheduleRepository.getMonthlyActivity(memberId, startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX));
+
+        return rawList.stream()
+                .map(item -> StatisticsResponseDTO.MonthlyActivityResultDTO.builder()
+                        .monthLabel(formatMonthLabel(item.monthLabel()))
+                        .count(item.count())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private String formatWeekLabel(String weekLabel) {
+        if (weekLabel == null || !weekLabel.contains("-")) {
+            return "";
+        }
+
+        String[] parts = weekLabel.split("-");
+
+        if (parts.length != 2) {
+            return weekLabel;
+        }
+
+        try {
+            int year = Integer.parseInt(parts[0]);
+            int week = Integer.parseInt(parts[1]);
+
+            // MySQL WEEK(date, 0)과 동일한 일요일 시작 주차 규칙 정의
+            WeekFields weekFields = WeekFields.SUNDAY_START;
+            
+            // 연도와 주차를 기준으로 해당 주의 첫 번째 요일(일요일) LocalDate 연산
+            LocalDate startOfWeek = LocalDate.of(year, 1, 1)
+                    .with(weekFields.weekOfYear(), week)
+                    .with(weekFields.dayOfWeek(), 1); // 1 = Sunday (SUNDAY_START 기준)
+
+            int month = startOfWeek.getMonthValue();
+            int weekOfMonth = startOfWeek.get(weekFields.weekOfMonth());
+
+            return String.format("%d월 %d주", month, weekOfMonth);
+        } catch (NumberFormatException e) {
+            log.warn("주간 활동 주차 라벨 파싱 실패 (포맷: YYYY-WW): {}", weekLabel, e);
+            return weekLabel;
+        }
+    }
+
+    private String formatMonthLabel(String monthLabel) {
+        if (monthLabel == null || !monthLabel.contains("-")) {
+            return "";
+        }
+        String[] parts = monthLabel.split("-");
+        if (parts.length != 2) {
+            return monthLabel;
+        }
+        try {
+            int month = Integer.parseInt(parts[1]);
+            return String.format("%d월", month);
+        } catch (NumberFormatException e) {
+            log.warn("월간 활동 월 라벨 파싱 실패 (포맷: YYYY-MM): {}", monthLabel, e);
+            return monthLabel;
+        }
     }
 
     // 조회 기간 유효성 검증

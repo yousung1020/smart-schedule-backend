@@ -40,25 +40,42 @@ public class MemberCommandService {
 
     // 소셜 회원가입
     public MemberResponseDTO.MemberResultDTO createSocialMember(String email, String nickname, String socialId, SocialProvider provider) {
+        // 이미 동일한 소셜 ID와 제공자 조합으로 가입된 정보가 있는지 검증
+        memberRepository.findBySocialIdAndSocialProvider(socialId, provider).ifPresent(existingMember -> {
+            throw new MemberException(MemberErrorCode.INVALID_SOCIAL_PROVIDER);
+        });
+
+        // 이미 가입된 이메일이 있는지 검증
+        memberRepository.findByEmail(email).ifPresent(existingMember -> {
+            if (existingMember.getSocialProvider() == null) {
+                throw new MemberException(MemberErrorCode.DUPLICATE_EMAIL);
+            } else {
+                throw new MemberException(MemberErrorCode.INVALID_SOCIAL_PROVIDER);
+            }
+        });
+
         String randomPassword = UUID.randomUUID().toString();
         String encodedPassword = passwordEncoder.encode(randomPassword);
         Member newMember = MemberConverter.toSocialEntity(email, nickname, socialId, provider, encodedPassword);
 
-        try {
         Member savedMember = memberRepository.save(newMember);
         log.info("새로운 소셜 회원이 가입되었습니다: provider={}, email={}", provider, savedMember.getEmail());
         return MemberConverter.toResultDTO(savedMember);
-        } catch (DataIntegrityViolationException e) {
-            log.warn("동시성 이슈 감지: 이미 가입된 소셜 회원입니다. provider={}, socialId={}", provider, socialId);
-            Member existingMember = memberRepository.findBySocialIdAndSocialProvider(socialId, provider)
-                    .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
-            return MemberConverter.toResultDTO(existingMember);
-        }
     }
 
     // 비밀번호 업데이트
     public void updatePassword(Member member, String encodedPassword) {
         member.updatePassword(encodedPassword);
         log.info("사용자의 비밀번호가 변경되었습니다: email={}", member.getEmail());
+    }
+
+    // 회원 탈퇴
+    public void withdrawMember(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        member.withdraw();
+        
+        log.info("사용자가 탈퇴 처리되었습니다: email={}", member.getEmail());
     }
 }

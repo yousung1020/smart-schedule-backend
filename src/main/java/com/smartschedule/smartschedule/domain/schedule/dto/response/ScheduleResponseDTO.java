@@ -23,6 +23,7 @@ public class ScheduleResponseDTO {
             Long categoryId,
             String categoryName,
             String categoryColor,
+            String color,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {}

@@ -26,6 +26,7 @@ public class ScheduleConverter {
                 .scheduleType(request.scheduleType())
                 .member(member)
                 .category(category)
+                .color(request.color())
                 .build();
     }
 
@@ -46,6 +47,7 @@ public class ScheduleConverter {
                 .categoryId(categoryId)
                 .categoryName(categoryName)
                 .categoryColor(categoryColor)
+                .color(schedule.getColor())
                 .createdAt(schedule.getCreatedAt())
                 .updatedAt(schedule.getUpdatedAt())
                 .build();

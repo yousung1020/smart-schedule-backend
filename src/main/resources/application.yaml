@@ -18,9 +18,17 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
 
+  output:
+    ansi:
+      enabled: always
+
   jpa:
     hibernate:
       ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
 
     show-sql: true
 

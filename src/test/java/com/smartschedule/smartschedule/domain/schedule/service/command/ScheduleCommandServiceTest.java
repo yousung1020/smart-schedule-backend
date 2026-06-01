@@ -32,6 +32,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import org.springframework.context.ApplicationEventPublisher;
+
 @ExtendWith(MockitoExtension.class)
 class ScheduleCommandServiceTest {
     @Mock
@@ -44,6 +46,8 @@ class ScheduleCommandServiceTest {
     private CategoryQueryService categoryQueryService;
     @Mock
     private NotificationCommandService notificationCommandService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private ScheduleCommandService scheduleCommandService;

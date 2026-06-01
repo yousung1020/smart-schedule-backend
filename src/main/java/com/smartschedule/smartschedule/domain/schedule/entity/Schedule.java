@@ -54,6 +54,9 @@ public class Schedule extends BaseEntity {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @Column(length = 20)
+    private String color;
+
     @Builder
     public Schedule(
             String title,
@@ -64,7 +67,8 @@ public class Schedule extends BaseEntity {
             boolean isCompleted,
             ScheduleType scheduleType,
             Member member,
-            Category category
+            Category category,
+            String color
     ) {
         this.title = title;
         this.content = content;
@@ -75,6 +79,7 @@ public class Schedule extends BaseEntity {
         this.scheduleType = scheduleType;
         this.member = member;
         this.category = category;
+        this.color = color;
     }
 
     // 일정 정보 수정
@@ -85,7 +90,8 @@ public class Schedule extends BaseEntity {
             LocalDateTime endTime,
             Priority priority,
             ScheduleType scheduleType,
-            Category category
+            Category category,
+            String color
     ) {
         this.title = title;
         this.content = content;
@@ -94,6 +100,7 @@ public class Schedule extends BaseEntity {
         this.priority = priority;
         this.scheduleType = scheduleType;
         this.category = category;
+        this.color = color;
     }
 
     // 상태 변경

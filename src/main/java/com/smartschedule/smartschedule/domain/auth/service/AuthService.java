@@ -32,6 +32,7 @@ public class AuthService {
     private static final String REDIS_RT_PREFIX = "RT:";
     private static final String REDIS_PW_RESET_PREFIX = "PW_RESET:";
     private static final String BEARER_PREFIX_LOWER = "bearer ";
+    private static final String RESET_URL = "http://localhost:5173/reset-password?token=";
 
     private final MemberQueryService memberQueryService;
     private final MemberCommandService memberCommandService;
@@ -53,7 +54,7 @@ public class AuthService {
         String resetToken = UUID.randomUUID().toString();
         redisUtil.set(REDIS_PW_RESET_PREFIX + resetToken, member.getEmail(), Duration.ofMinutes(15));
         
-        String resetLink = "http://localhost:5173/reset-password?token=" + resetToken;
+        String resetLink = RESET_URL + resetToken;
         mailService.sendPasswordResetMail(member.getEmail(), resetLink);
         
         log.info("비밀번호를 초기화하는 메일을 성공적으로 보냄: {}", member.getEmail());
@@ -74,11 +75,10 @@ public class AuthService {
     }
 
     // 일반 회원가입
-    public AuthResponseDTO.TokenResultDTO signup(AuthRequestDTO.SignupDTO request) {
+    public void signup(AuthRequestDTO.SignupDTO request) {
         log.info("일반 회원가입을 시도합니다: email={}", request.getEmail());
         MemberResponseDTO.MemberResultDTO memberDTO = memberCommandService.createMember(request);
         log.info("일반 회원가입이 완료되었습니다: memberId={}", memberDTO.id());
-        return generateAndSaveTokens(memberDTO.id(), memberDTO.role());
     }
 
     // 일반 로그인

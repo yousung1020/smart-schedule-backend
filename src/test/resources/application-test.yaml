@@ -35,5 +35,9 @@ kakao:
   user-info-uri: https://kapi.kakao.com/v2/user/me
 
 notification:
+  async:
+    core-pool-size: 1
+    max-pool-size: 2
+    queue-capacity: 10
   scheduler:
     cron: "0 * * * * *"

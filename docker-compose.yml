@@ -47,6 +47,9 @@ services:
 
   smart-schedule-app:
     image: ${DOCKER_HUB_USERNAME}/smart-schedule-backend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: smart-schedule-app
     restart: always
     env_file:

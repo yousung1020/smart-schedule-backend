@@ -24,10 +24,10 @@ public class AuthController {
     private final AuthService authService;
     private final JwtProperties jwtProperties;
 
-    @Value("${COOKIE_SECURE}")
+    @Value("${COOKIE_SECURE:false}")
     private boolean cookieSecure;
 
-    @Value("${COOKIE_SAME_SITE}")
+    @Value("${COOKIE_SAME_SITE:Lax}")
     private String cookieSameSite;
 
     // 일반 회원가입

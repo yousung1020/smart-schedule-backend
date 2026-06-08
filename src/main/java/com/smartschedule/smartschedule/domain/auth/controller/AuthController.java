@@ -7,11 +7,11 @@ import com.smartschedule.smartschedule.domain.auth.exception.code.error.AuthErro
 import com.smartschedule.smartschedule.domain.auth.exception.code.success.AuthSuccessCode;
 import com.smartschedule.smartschedule.domain.auth.service.AuthService;
 import com.smartschedule.smartschedule.global.apiPayload.ApiResponse;
-import com.smartschedule.smartschedule.global.apiPayload.code.BaseSuccessCode;
 import com.smartschedule.smartschedule.global.config.JwtProperties;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -23,6 +23,12 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final AuthService authService;
     private final JwtProperties jwtProperties;
+
+    @Value("${COOKIE_SECURE}")
+    private boolean cookieSecure;
+
+    @Value("${COOKIE_SAME_SITE}")
+    private String cookieSameSite;
 
     // 일반 회원가입
     @PostMapping("/signup")
@@ -91,8 +97,8 @@ public class AuthController {
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken, int maxAge) {
         ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(maxAge)
                 .build();

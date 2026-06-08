@@ -46,7 +46,7 @@ services:
       - smart-schedule-network
 
   smart-schedule-app:
-    image: ${DOCKER_HUB_USERNAME}/smart-schedule-backend:latest
+    image: ${DOCKERHUB_USERNAME}/smart-schedule-backend:latest
     build:
       context: .
       dockerfile: Dockerfile

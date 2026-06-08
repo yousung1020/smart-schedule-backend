@@ -27,7 +27,8 @@ public class SecurityConfig {
     String[] allowUri = {
             "/api/v1/auth/**",
             "/swagger-ui/**",
-            "/v3/api-docs/**"
+            "/v3/api-docs/**",
+            "/health"
     };
 
     @Bean

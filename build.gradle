@@ -57,6 +57,10 @@ dependencies {
 	annotationProcessor "jakarta.annotation:jakarta.annotation-api"
 }
 
+tasks.named('bootJar') {
+	archiveFileName = 'app.jar'
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
 	environment "SPRING_DATASOURCE_URL", "jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE"

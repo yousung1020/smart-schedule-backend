@@ -12,10 +12,14 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  mail:
+    username: test@example.com
+    password: test-password
   data:
     redis:
       host: localhost
       port: 6379
+      password: test-redis-password
 
 jwt:
   secret: dGVzdC1zZWNyZXQta2V5LWZvci1zcHJpbmctYm9vdC1qd3QtdG9rZW4= # test secret (Base64)

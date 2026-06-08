@@ -39,3 +39,6 @@ out/
 
 .DS_Store
 .env
+
+# Let's Encrypt (private keys — EC2에만 보관)
+certbot/conf/

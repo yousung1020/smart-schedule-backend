@@ -35,7 +35,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: mkdir -p ~/smart-schedule-backend/nginx
+          script: mkdir -p ~/smart-schedule-backend/nginx ~/smart-schedule-backend/certbot/www
 
       - name: Copy compose and nginx config
         uses: appleboy/scp-action@v0.1.7
@@ -61,6 +61,7 @@ jobs:
 
             docker compose pull smart-schedule-app
             docker compose up -d --remove-orphans
+            docker compose exec -T smart-schedule-nginx nginx -s reload || docker compose restart smart-schedule-nginx
             docker image prune -f
 
             echo "Starting health check..."

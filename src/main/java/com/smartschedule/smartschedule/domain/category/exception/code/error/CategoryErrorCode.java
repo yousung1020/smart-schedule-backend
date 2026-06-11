@@ -9,14 +9,14 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum CategoryErrorCode implements BaseErrorCode {
     CATEGORY_NOT_FOUND(
-            HttpStatus.NOT_FOUND,
-            "해당 카테고리를 찾을 수 없습니다.",
-            "CATEGORY404_1"
+        HttpStatus.NOT_FOUND,
+        "해당 카테고리를 찾을 수 없습니다.",
+        "CATEGORY404_1"
     ),
     CATEGORY_ACCESS_DENIED(
-            HttpStatus.FORBIDDEN,
-            "해당 카테고리에 대한 접근 권한이 없습니다.",
-            "CATEGORY403_1"
+        HttpStatus.FORBIDDEN,
+        "해당 카테고리에 대한 접근 권한이 없습니다.",
+        "CATEGORY403_1"
     ),
     ;
 

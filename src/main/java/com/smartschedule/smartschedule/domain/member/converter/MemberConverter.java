@@ -19,9 +19,9 @@ public class MemberConverter {
 
     public static Member toEntity(AuthRequestDTO.SignupDTO request, String encodedPassword) {
         return Member.builder()
-                .email(request.getEmail())
+                .email(request.email())
                 .password(encodedPassword)
-                .nickname(request.getNickname())
+                .nickname(request.nickname())
                 .role(Role.ROLE_USER)
                 .isActive(true)
                 .build();

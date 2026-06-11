@@ -71,7 +71,7 @@ class AuthServiceTest {
 
         // then
         assertNotNull(result);
-        assertEquals("access_token", result.getAccessToken());
+        assertEquals("access_token", result.accessToken());
     }
 
     @Test
@@ -100,7 +100,7 @@ class AuthServiceTest {
 
         // then
         assertNotNull(result);
-        assertEquals("app_access", result.getAccessToken());
+        assertEquals("app_access", result.accessToken());
         verify(memberCommandService).createSocialMember(any(), any(), eq("12345"), eq(SocialProvider.KAKAO));
         verify(redisUtil).set(eq("RT:1"), eq("app_refresh_token"), any());
     }

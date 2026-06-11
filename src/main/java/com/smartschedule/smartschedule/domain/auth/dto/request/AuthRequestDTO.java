@@ -2,66 +2,57 @@ package com.smartschedule.smartschedule.domain.auth.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import lombok.*;
+import lombok.Builder;
 
 public class AuthRequestDTO {
-    @Getter
     @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    public static class SignupDTO {
+    public record SignupDTO(
         @NotBlank(message = "이메일은 필수 입력값입니다.")
         @Email(message = "이메일 형식이 올바르지 않습니다.")
-        private String email;
+        String email,
 
         @NotBlank(message = "비밀번호는 필수 입력값입니다.")
-        private String password;
+        String password,
 
         @NotBlank(message = "닉네임은 필수 입력값입니다.")
-        private String nickname;
-    }
+        String nickname
+    ) {}
 
-    @Getter
     @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    public static class LoginDTO {
+    public record LoginDTO(
         @NotBlank(message = "이메일은 필수 입력값입니다.")
         @Email(message = "이메일 형식이 올바르지 않습니다.")
-        private String email;
+        String email,
 
         @NotBlank(message = "비밀번호는 필수 입력값입니다.")
-        private String password;
-    }
+        String password
+    ) {}
 
-    @Getter
     @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    public static class SocialLoginDTO {
+    public record SocialLoginDTO(
         @NotBlank(message = "인가 코드는 필수 입력값입니다.")
-        private String authorizationCode;
-    }
+        String authorizationCode
+    ) {}
 
-    @Getter
     @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    public static class PasswordResetRequestDTO {
+    public record ReissueDTO(
+        @NotBlank(message = "리프레시 토큰은 필수 입력값입니다.")
+        String refreshToken
+    ) {}
+
+    @Builder
+    public record PasswordResetRequestDTO(
         @NotBlank(message = "이메일은 필수 입력값입니다.")
         @Email(message = "이메일 형식이 올바르지 않습니다.")
-        private String email;
-    }
+        String email
+    ) {}
 
-    @Getter
     @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    public static class PasswordResetDTO {
+    public record PasswordResetDTO(
         @NotBlank(message = "토큰은 필수 입력값입니다.")
-        private String token;
+        String token,
 
         @NotBlank(message = "새 비밀번호는 필수 입력값입니다.")
-        private String newPassword;
-    }
+        String newPassword
+    ) {}
 }

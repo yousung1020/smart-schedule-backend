@@ -29,10 +29,10 @@ public class MemberCommandService {
 
     // 일반 회원가입
     public MemberResponseDTO.MemberResultDTO createMember(AuthRequestDTO.SignupDTO request) {
-        if (memberRepository.existsByEmail(request.getEmail())) {
+        if (memberRepository.existsByEmail(request.email())) {
             throw new MemberException(MemberErrorCode.DUPLICATE_EMAIL);
         }
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        String encodedPassword = passwordEncoder.encode(request.password());
         Member newMember = MemberConverter.toEntity(request, encodedPassword);
 
         return MemberConverter.toResultDTO(memberRepository.save(newMember));

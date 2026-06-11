@@ -9,10 +9,11 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum StatisticsErrorCode implements BaseErrorCode {
     INVALID_STATISTICS_PERIOD(
-            HttpStatus.BAD_REQUEST,
-            "조회 종료일은 시작일 이후여야 합니다.",
-            "STATS400_1"
-    );
+        HttpStatus.BAD_REQUEST,
+        "조회 종료일은 시작일 이후여야 합니다.",
+        "STATS400_1"
+    ),
+    ;
 
     private final HttpStatus httpStatus;
     private final String message;

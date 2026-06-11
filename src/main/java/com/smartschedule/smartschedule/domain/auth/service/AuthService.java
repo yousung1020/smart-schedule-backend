@@ -44,7 +44,7 @@ public class AuthService {
 
     // 비밀번호 재설정 요청
     public void requestPasswordReset(AuthRequestDTO.PasswordResetRequestDTO request) {
-        Member member = memberQueryService.findByEmail(request.getEmail());
+        Member member = memberQueryService.findByEmail(request.email());
         
         // 소셜 로그인 사용자인지 확인
         if (member.getSocialProvider() != null) {
@@ -62,32 +62,32 @@ public class AuthService {
 
     // 비밀번호 재설정 실행
     public void resetPassword(AuthRequestDTO.PasswordResetDTO request) {
-        String email = (String) redisUtil.getAndDelete(REDIS_PW_RESET_PREFIX + request.getToken());
+        String email = (String) redisUtil.getAndDelete(REDIS_PW_RESET_PREFIX + request.token());
         
         if (email == null) {
             throw new AuthException(AuthErrorCode.RESET_TOKEN_INVALID);
         }
         
         Member member = memberQueryService.findByEmail(email);
-        memberCommandService.updatePassword(member, passwordEncoder.encode(request.getNewPassword()));
+        memberCommandService.updatePassword(member, passwordEncoder.encode(request.newPassword()));
         
         log.info("패스워드가 성공적으로 초기화됨: {}", email);
     }
 
     // 일반 회원가입
     public void signup(AuthRequestDTO.SignupDTO request) {
-        log.info("일반 회원가입을 시도합니다: email={}", request.getEmail());
+        log.info("일반 회원가입을 시도합니다: email={}", request.email());
         MemberResponseDTO.MemberResultDTO memberDTO = memberCommandService.createMember(request);
         log.info("일반 회원가입이 완료되었습니다: memberId={}", memberDTO.id());
     }
 
     // 일반 로그인
     public AuthResponseDTO.TokenResultDTO login(AuthRequestDTO.LoginDTO request) {
-        log.info("일반 로그인을 시도합니다: email={}", request.getEmail());
-        Member member = memberQueryService.findByEmail(request.getEmail());
+        log.info("일반 로그인을 시도합니다: email={}", request.email());
+        Member member = memberQueryService.findByEmail(request.email());
 
-        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
-            log.warn("로그인 실패: 비밀번호 불일치 - email={}", request.getEmail());
+        if (!passwordEncoder.matches(request.password(), member.getPassword())) {
+            log.warn("로그인 실패: 비밀번호 불일치 - email={}", request.email());
             throw new AuthException(AuthErrorCode.TOKEN_INVALID);
         }
 
@@ -99,7 +99,7 @@ public class AuthService {
     public AuthResponseDTO.TokenResultDTO socialLogin(String provider, AuthRequestDTO.SocialLoginDTO request) {
         log.info("소셜 로그인을 시도합니다: provider={}", provider);
         SocialProvider socialProvider = SocialProvider.fromString(provider);
-        OAuth2UserInfo userInfo = fetchUserInfo(socialProvider, request.getAuthorizationCode());
+        OAuth2UserInfo userInfo = fetchUserInfo(socialProvider, request.authorizationCode());
 
         String socialId = userInfo.getSocialId();
         String email = userInfo.getEmail();

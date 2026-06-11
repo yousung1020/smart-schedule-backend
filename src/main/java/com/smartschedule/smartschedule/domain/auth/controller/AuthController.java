@@ -21,6 +21,9 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/auth")
 public class AuthController {
+    private static final String CLIENT_TYPE_HEADER = "X-Client-Type";
+    private static final String CLIENT_TYPE_MOBILE = "mobile";
+
     private final AuthService authService;
     private final JwtProperties jwtProperties;
 
@@ -43,16 +46,25 @@ public class AuthController {
 
     // 일반 로그인
     @PostMapping("/login")
-    public ApiResponse<AuthResponseDTO.AccessTokenResultDTO> login(@RequestBody @Valid AuthRequestDTO.LoginDTO request, HttpServletResponse response) {
+    public ApiResponse<AuthResponseDTO.AccessTokenResultDTO> login(
+            @RequestBody @Valid AuthRequestDTO.LoginDTO request,
+            @RequestHeader(value = CLIENT_TYPE_HEADER, required = false) String clientType,
+            HttpServletResponse response
+    ) {
         AuthResponseDTO.TokenResultDTO tokens = authService.login(request);
-        return handleTokenResponse(tokens, response, AuthSuccessCode.LOGIN_SUCCESS);
+        return handleTokenResponse(tokens, response, AuthSuccessCode.LOGIN_SUCCESS, clientType);
     }
 
     // 소셜 로그인
     @PostMapping("/login/{provider}")
-    public ApiResponse<AuthResponseDTO.AccessTokenResultDTO> socialLogin(@PathVariable("provider") String provider, @RequestBody @Valid AuthRequestDTO.SocialLoginDTO request, HttpServletResponse response) {
+    public ApiResponse<AuthResponseDTO.AccessTokenResultDTO> socialLogin(
+            @PathVariable("provider") String provider,
+            @RequestBody @Valid AuthRequestDTO.SocialLoginDTO request,
+            @RequestHeader(value = CLIENT_TYPE_HEADER, required = false) String clientType,
+            HttpServletResponse response
+    ) {
         AuthResponseDTO.TokenResultDTO tokens = authService.socialLogin(provider, request);
-        return handleTokenResponse(tokens, response, AuthSuccessCode.LOGIN_SUCCESS);
+        return handleTokenResponse(tokens, response, AuthSuccessCode.LOGIN_SUCCESS, clientType);
     }
 
     // 로그아웃
@@ -65,12 +77,15 @@ public class AuthController {
 
     // 토큰 재발급
     @PostMapping("/reissue")
-    public ApiResponse<AuthResponseDTO.AccessTokenResultDTO> reissueToken(@CookieValue(value = "refresh_token", required = false) String refreshToken, HttpServletResponse response) {
-        if (refreshToken == null || refreshToken.isBlank()) {
-            throw new AuthException(AuthErrorCode.TOKEN_INVALID);
-        }
+    public ApiResponse<AuthResponseDTO.AccessTokenResultDTO> reissueToken(
+            @RequestHeader(value = CLIENT_TYPE_HEADER, required = false) String clientType,
+            @CookieValue(value = "refresh_token", required = false) String cookieRefreshToken,
+            @RequestBody(required = false) @Valid AuthRequestDTO.ReissueDTO request,
+            HttpServletResponse response
+    ) {
+        String refreshToken = resolveRefreshToken(clientType, cookieRefreshToken, request);
         AuthResponseDTO.TokenResultDTO tokens = authService.reissueToken(refreshToken);
-        return handleTokenResponse(tokens, response, AuthSuccessCode.TOKEN_REFRESH_SUCCESS);
+        return handleTokenResponse(tokens, response, AuthSuccessCode.TOKEN_REFRESH_SUCCESS, clientType);
     }
 
     // 비밀번호 재설정 요청
@@ -88,12 +103,27 @@ public class AuthController {
     }
 
     // 토큰 응답 공통 처리 헬퍼
-    private ApiResponse<AuthResponseDTO.AccessTokenResultDTO> handleTokenResponse(AuthResponseDTO.TokenResultDTO tokens, HttpServletResponse response, AuthSuccessCode successCode) {
+    private ApiResponse<AuthResponseDTO.AccessTokenResultDTO> handleTokenResponse(
+            AuthResponseDTO.TokenResultDTO tokens,
+            HttpServletResponse response,
+            AuthSuccessCode successCode,
+            String clientType
+    ) {
+        // 모바일 클라이언트인 경우
+        if (isMobileClient(clientType)) {
+            var result = AuthResponseDTO.AccessTokenResultDTO.builder()
+                    .accessToken(tokens.accessToken())
+                    .refreshToken(tokens.refreshToken())
+                    .build();
+            return ApiResponse.onSuccess(successCode, result);
+        }
+        // 웹 클라이언트인 경우
         int maxAge = (int) (jwtProperties.getRefreshToken().getExpirationTime() / 1000);
-        setRefreshTokenCookie(response, tokens.getRefreshToken(), maxAge);
-        return ApiResponse.onSuccess(successCode, new AuthResponseDTO.AccessTokenResultDTO(tokens.getAccessToken()));
+        setRefreshTokenCookie(response, tokens.refreshToken(), maxAge);
+        return ApiResponse.onSuccess(successCode, new AuthResponseDTO.AccessTokenResultDTO(tokens.accessToken()));
     }
 
+    // 리프레시 토큰 쿠키 설정
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken, int maxAge) {
         ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
@@ -103,5 +133,30 @@ public class AuthController {
                 .maxAge(maxAge)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private String resolveRefreshToken(
+            String clientType,
+            String cookieRefreshToken,
+            AuthRequestDTO.ReissueDTO request
+    ) {
+        // 모바일 클라이언트인 경우
+        if (isMobileClient(clientType)) {
+            if (request == null || request.refreshToken() == null || request.refreshToken().isBlank()) {
+                throw new AuthException(AuthErrorCode.TOKEN_INVALID);
+            }
+            return request.refreshToken();
+        }
+
+        // 토큰 쿠키가 없는 경우
+        if (cookieRefreshToken == null || cookieRefreshToken.isBlank()) {
+            throw new AuthException(AuthErrorCode.TOKEN_INVALID);
+        }
+
+        return cookieRefreshToken;
+    }
+
+    private boolean isMobileClient(String clientType) {
+        return CLIENT_TYPE_MOBILE.equalsIgnoreCase(clientType);
     }
 }

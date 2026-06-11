@@ -5,7 +5,6 @@ import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
 public class CategoryRequestDTO {
-
     @Builder
     public record CategoryCreateDTO(
             @NotBlank(message = "카테고리 이름은 필수입니다.")

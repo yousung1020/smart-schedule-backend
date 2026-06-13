@@ -88,7 +88,7 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.password(), member.getPassword())) {
             log.warn("로그인 실패: 비밀번호 불일치 - email={}", request.email());
-            throw new AuthException(AuthErrorCode.TOKEN_INVALID);
+            throw new MemberException(MemberErrorCode.MEMBER_NOT_FOUND);
         }
 
         log.info("일반 로그인이 완료되었습니다: memberId={}", member.getId());
